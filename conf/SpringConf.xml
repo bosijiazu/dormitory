@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:mybatis="http://mybatis.org/schema/mybatis-spring" xmlns:p="http://www.springframework.org/schema/p" xmlns:context="http://www.springframework.org/schema/context" xmlns:aop="http://www.springframework.org/schema/aop" xmlns:tx="http://www.springframework.org/schema/tx" xsi:schemaLocation="   http://www.springframework.org/schema/beans    http://www.springframework.org/schema/beans/spring-beans-4.2.xsd    http://www.springframework.org/schema/aop   http://www.springframework.org/schema/aop/spring-aop-4.2.xsd   http://www.springframework.org/schema/context    http://www.springframework.org/schema/context/spring-context-4.2.xsd   http://www.springframework.org/schema/tx   http://www.springframework.org/schema/tx/spring-tx-4.2.xsd   http://mybatis.org/schema/mybatis-spring   http://mybatis.org/schema/mybatis-spring.xsd">
+  <!-- 采用注释的方式配置bean -->
+  <!-- 启用spring注解支持 -->
+  <context:annotation-config />
+  <!-- 该 BeanPostProcessor 将自动对标注 @Autowired 的 Bean 进行注入 -->
+  <bean class="org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor" />
+  <!-- 加载配置文件 -->
+  <context:property-placeholder location="classpath:jdbc.properties" file-encoding="utf-8" ignore-unresolvable="true" />
+  <!-- 配置要扫描的包 -->
+  <!-- 扫描路径不扫描controller -->
+  <context:component-scan base-package="com.qtrmoon">
+    <context:exclude-filter type="annotation" expression="org.springframework.stereotype.Controller" />
+  </context:component-scan>
+  <!-- 配置数据源 -->
+  <bean id="dataSource" class="org.springframework.jdbc.datasource.DriverManagerDataSource">
+    <property name="driverClassName" value="${jdbc.driverClassName}" />
+    <property name="url" value="${jdbc.url}" />
+    <property name="username" value="${jdbc.username}" />
+    <property name="password" value="${jdbc.password}" />
+  </bean>
+  <!-- 	
+	<bean id="dataSource" class="com.mchange.v2.c3p0.ComboPooledDataSource"
+		destroy-method="close" p:driverClass="${jdbc.driverClassName}"
+		p:jdbcUrl="${jdbc.url}" p:user="${jdbc.username}" p:password="${jdbc.password}"
+		p:testConnectionOnCheckout="${jdbc.c3p0.testConnectionOnCheckout}"
+		p:testConnectionOnCheckin="${jdbc.c3p0.testConnectionOnCheckin}"
+		p:idleConnectionTestPeriod="${jdbc.c3p0.idleConnectionTestPeriod}"
+		p:initialPoolSize="${jdbc.c3p0.initialPoolSize}" p:minPoolSize="${jdbc.c3p0.minPoolSize}"
+		p:maxPoolSize="${jdbc.c3p0.maxPoolSize}" p:maxIdleTime="${jdbc.c3p0.maxIdleTime}" />
+ -->
+  <bean id="sqlSessionFactory" class="org.mybatis.spring.SqlSessionFactoryBean">
+    <property name="dataSource" ref="dataSource" />
+    <property name="configLocation" value="classpath:MyBatisConf.xml" />
+    <!-- <property name="typeAliasesPackage" value="com.tiantian.ckeditor.model"/> -->
+  </bean>
+  <!--4. 配置事务管理器，由spring的 HibernateTransactionManager提供-->
+  <bean id="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+    <property name="dataSource" ref="dataSource" />
+  </bean>
+  <!-- 配置事务异常封装 -->
+  <bean id="persistenceExceptionTranslationPostProcessor" class="org.springframework.dao.annotation.PersistenceExceptionTranslationPostProcessor" />
+  <!--5. 配置事务属性(事务的传播特性)，需要事务管理器transactionManager -->
+  <tx:advice id="txAdvice" transaction-manager="transactionManager">
+    <!-- 事务属性定义 -->
+    <tx:attributes>
+      <tx:method name="get*" read-only="true" />
+      <tx:method name="sch*" read-only="true" />
+      <tx:method name="add*" propagation="REQUIRED" />
+      <tx:method name="upd*" propagation="REQUIRED" />
+      <tx:method name="del*" propagation="REQUIRED" />
+    </tx:attributes>
+  </tx:advice>
+  <!-- 配合<tx:advice>和<aop:advisor>完成了事务切面的定义 -->
+  <!--6.配置事务的切点AOP，并把切点和事务属性关联起来-->
+  <aop:config proxy-target-class="true">
+    <!-- 通过aop定义事务增强切面(定义切点) -->
+    <aop:pointcut expression=" execution(* com.mucfc.service.*.*(..))" id="serviceMethod" />
+    <!-- 将切点和事务属性关联起来 -->
+    <aop:advisor advice-ref="txAdvice" pointcut-ref="serviceMethod" />
+  </aop:config>
+  <!--   	<bean id="userMapper" class="org.mybatis.spring.mapper.MapperFactoryBean">  
+       <property name="mapperInterface" value="com.mucfc.mapper.UserMapper" />  
+       <property name="sqlSessionFactory" ref="sqlSessionFactory" />  
+    </bean> -->
+  <!-- 自动批量构建mapper接口，作用类上 -->
+  <mybatis:scan base-package="com.qtrmoon.sysmanage.serdao" />
+</beans>
+
